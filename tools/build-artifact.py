@@ -1,0 +1,12 @@
+# Собирает вариант страницы для артефакта claude.ai: без doctype/html/head/body (их добавляет платформа)
+import re, sys, pathlib
+src = pathlib.Path(sys.argv[1]).read_text()
+out = pathlib.Path(sys.argv[2])
+head = re.search(r'<head>(.*?)</head>', src, re.S).group(1)
+body = re.search(r'<body>(.*?)</body>', src, re.S).group(1)
+head = re.sub(r'<meta charset[^>]*>\s*|<meta name="viewport"[^>]*>\s*', '', head)
+title = re.search(r'<title>.*?</title>', head).group(0)
+head = head.replace(title, '')
+out.parent.mkdir(parents=True, exist_ok=True)
+out.write_text(title + '\n' + head.strip() + '\n' + body.strip() + '\n')
+print('written', out)
