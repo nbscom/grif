@@ -79,16 +79,50 @@ function renderSug() {
   $('sugList')._data = list;
 }
 
+// ---------- последовательность: размер, длительности, бой ----------
+const PSIG = {
+  '4/4': { spb: 8, beatSteps: [0, 2, 4, 6], strums: [['D-DU-UDU', 'поп: Д ДВ ВДВ'], ['DDDDDDDD', 'рок: восьмые вниз'], ['D-D-D-D-', 'на каждую долю'], ['D-------', 'только сильная доля']] },
+  '3/4': { spb: 6, beatSteps: [0, 2, 4], strums: [['D-DUDU', 'вальс: Д ДВ ДВ'], ['DDDDDD', 'восьмые вниз'], ['D-D-D-', 'на каждую долю'], ['D-----', 'только сильная доля']] },
+  '2/4': { spb: 4, beatSteps: [0, 2], strums: [['D-DU', 'Д ДВ'], ['DDDD', 'восьмые вниз'], ['D-D-', 'на каждую долю'], ['D---', 'только сильная доля']] },
+  '6/8': { spb: 6, beatSteps: [0, 1, 2, 3, 4, 5], strums: [['D--D--', 'на две доли'], ['DDDDDD', 'все восьмые'], ['D-UD-U', 'Д ВД В'], ['D-----', 'только сильная доля']] },
+};
+S.pSig = PSIG[S.pSig] ? S.pSig : '4/4';
+['pMetro', 'pCount', 'pSound', 'pLoop'].forEach((k, i) => { if (S[k] === undefined) S[k] = [true, true, true, true][i]; });
+if (S.pStrum === undefined) S.pStrum = 0;
+const sig = () => PSIG[S.pSig];
+const beatsPerBar = () => S.pSig === '6/8' ? 6 : sig().beatSteps.length;
+const durOpts = () => S.pSig === '3/4' ? [1, 2, 4] : [0.5, 1, 2, 4];
+const barsOf = c => c.bars || 1;
+const durLabel = b => b === 0.5 ? '½ такта' : b === 1 ? '1 такт' : b + ' такта';
+const totalBars = () => S.prog.reduce((a, c) => a + barsOf(c), 0);
+let beatNow = null; // { seg, k }
+
 function renderProg() {
   $('preset').innerHTML = `<option value="">Готовые прогрессии…</option>` + G.PRESETS[S.keyMode].map((p, i) => `<option value="${i}">${p[0]}</option>`).join('');
   $('bpm').value = S.bpm;
+  $('pSig').innerHTML = Object.keys(PSIG).map(k => `<button data-v="${k}" class="${k === S.pSig ? 'on' : ''}" aria-pressed="${k === S.pSig}">${k}</button>`).join('');
+  $('pStrum').innerHTML = sig().strums.map(([pat, nm], i) => `<option value="${i}"${i === S.pStrum ? ' selected' : ''}>${nm}</option>`).join('');
+  $('pStrum').disabled = G.isBass();
+  ['pMetro', 'pCount', 'pSound', 'pLoop'].forEach(k => { $(k).checked = !!S[k]; });
   $('playProg').textContent = playing >= 0 ? '■ Стоп' : '▶ Играть';
   $('playProg').disabled = !S.prog.length;
-  $('progList').innerHTML = S.prog.length ? S.prog.map((c, i) =>
-    `<div class="pchip${i === S.sel ? ' on' : ''}${i === playing ? ' play' : ''}" data-pi="${i}" role="button" tabindex="0" aria-label="${G.chordName(c)}">
-      <b>${G.chordName(c)}</b><small>${G.degreeOf(c) || '—'}</small>
+  const bpb = beatsPerBar();
+  $('progList').innerHTML = S.prog.length ? S.prog.map((c, i) => {
+    const nb = Math.round(barsOf(c) * bpb);
+    return `<div class="pchip${i === S.sel ? ' on' : ''}${i === playing ? ' play' : ''}" data-pi="${i}" role="button" tabindex="0" aria-label="${G.chordName(c)}, ${durLabel(barsOf(c))}" style="flex:${barsOf(c)} 1 ${Math.round(barsOf(c) * 96)}px">
+      <b>${G.chordName(c)}</b><small>${G.degreeOf(c) || '—'} · ${durLabel(barsOf(c))}</small>
+      <span class="bdots">${Array.from({ length: nb }, (_, k) => `<i data-b="${i}-${k}" class="${k % bpb === 0 ? 'down' : ''}"></i>`).join('')}</span>
       <button class="px" data-del="${i}" aria-label="Удалить ${G.chordName(c)}">×</button>
-    </div>`).join('') : `<span class="empty">Прогрессия пуста. Выберите аккорд и нажмите подсказку справа или возьмите готовую прогрессию.</span>`;
+    </div>`;
+  }).join('') : `<span class="empty">Последовательность пуста. Выберите аккорд и нажмите подсказку или возьмите готовую прогрессию.</span>`;
+  const c = S.prog[S.sel];
+  $('seqSel').innerHTML = c ? `<span class="lbl">Аккорд ${S.sel + 1}: ${G.chordName(c)}</span>
+    <div class="seg" id="pDur">${durOpts().map(b => `<button data-d="${b}" class="${b === barsOf(c) ? 'on' : ''}">${b === 0.5 ? '½' : b}</button>`).join('')}</div><span class="hint">такт.</span>
+    <button class="btn" data-mv="-1" ${S.sel === 0 ? 'disabled' : ''} aria-label="Сдвинуть влево">←</button>
+    <button class="btn" data-mv="1" ${S.sel >= S.prog.length - 1 ? 'disabled' : ''} aria-label="Сдвинуть вправо">→</button>
+    <button class="btn" data-dup="1">Повторить</button>` : '';
+  const tb = totalBars(), sec = tb * sig().spb * 60 / S.bpm / 2;
+  $('seqStatus').innerHTML = S.prog.length ? `<span class="hint">${tb % 1 ? tb.toFixed(1) : tb} ${tb === 1 ? 'такт' : tb < 5 ? 'такта' : 'тактов'} в размере ${S.pSig} · круг ${G.fmtTime(sec)}</span><span class="seq-beat" id="seqBeat"></span>` : '';
 }
 
 function renderFB() {
@@ -150,12 +184,17 @@ function renderFB() {
 }
 
 function renderAll() { renderKey(); renderChord(); renderSug(); renderProg(); renderFB(); G.save(); }
-G.harmony = { render: renderAll };
+G.harmony = {
+  render: renderAll,
+  show(c) { S.sel = -1; setCur({ root: c.root, q: c.q, v: c.v || 0 }, { sync: false }); renderAll(); },
+  append(c) { S.prog.push({ root: c.root, q: c.q, v: c.v || 0, bars: 1 }); S.sel = S.prog.length - 1; setCur(S.prog[S.sel], { sync: false }); renderAll(); },
+  stop: () => { if (playing >= 0) stopProg(); },
+};
 
 // ---------- звук ----------
 function setCur(c, { sync = true } = {}) {
   S.cur = { ...c };
-  if (sync && S.sel >= 0 && S.prog[S.sel]) S.prog[S.sel] = { ...c };
+  if (sync && S.sel >= 0 && S.prog[S.sel]) S.prog[S.sel] = { ...c, bars: S.prog[S.sel].bars || 1 };
 }
 function bassLine(root, at, step, pattern) {
   const m = G.bassRootMidi(root);
@@ -177,29 +216,62 @@ function arpCur() {
 }
 function stopProg() {
   if (transport) transport.stop();
-  transport = null; playing = -1; A.chokeAll(); A.clearVisual(); renderProg();
+  transport = null; playing = -1; beatNow = null; A.chokeAll(); A.clearVisual(); renderProg();
+}
+function lightBeat(seg, k, label) {
+  document.querySelectorAll('#progList .bdots i.now').forEach(el => el.classList.remove('now'));
+  const el = document.querySelector(`#progList [data-b="${seg}-${k}"]`);
+  if (el) el.classList.add('now');
+  const sb = $('seqBeat'); if (sb) sb.textContent = label;
 }
 function playProg() {
   if (playing >= 0) return stopProg();
   if (!S.prog.length) return;
   A.ctx();
-  const pattern = G.isBass() ? ['D', 'D', 'D', 'D', 'D', 'D', 'D', 'D'] : ['D', '', 'D', 'U', '', 'U', 'D', 'U'];
+  const sg = sig(), spb = sg.spb, sigName = S.pSig;
+  // раскладка: для каждого шага (восьмой) — индекс аккорда
+  const segAt = [], segStart = [];
+  S.prog.forEach((c, i) => { segStart.push(segAt.length); const n = Math.max(1, Math.round(barsOf(c) * spb)); for (let k = 0; k < n; k++) segAt.push(i); });
+  const total = segAt.length;
+  const countIn = S.pCount ? spb : 0;
+  const stepLen = () => 60 / S.bpm / 2;
+  const beatOf = st => sigName === '6/8' ? st : sg.beatSteps.indexOf(st);
   playing = 0;
+  let lastSeg = -1;
   transport = new A.Transport({
-    stepDur: () => 60 / S.bpm / 2,
+    stepDur: stepLen,
     onStep(step, t) {
-      const bar = Math.floor(step / 8) % S.prog.length, k = step % 8;
-      const c = S.prog[bar];
-      if (k === 0) A.atTime(t, () => {
-        if (!transport) return;
-        playing = bar; S.sel = bar; S.cur = { ...c };
-        renderChord(); renderSug(); renderProg(); renderFB();
-      });
-      const p = pattern[k];
-      if (!p) return;
-      if (G.isBass()) { A.pluck(G.bassRootMidi(c.root) + (k === 6 ? 12 : 0), 0, t, k === 0 ? 1 : 0.8, 60 / S.bpm / 2 * 0.85); return; }
+      const sIn = step - countIn;
+      const inBar = ((sIn % spb) + spb) % spb;
+      const isBeat = sigName === '6/8' || sg.beatSteps.includes(inBar);
+      const lvl = sigName === '6/8' ? (inBar === 0 ? 2 : inBar === 3 ? 1 : 0) : (inBar === 0 ? 2 : 1);
+      if (sIn < 0) {                                   // отсчёт
+        if (isBeat) { A.click(t, lvl); A.atTime(t, () => { const sb = $('seqBeat'); if (sb) sb.textContent = 'Отсчёт: ' + (beatOf(inBar) + 1); }); }
+        return;
+      }
+      if (sIn >= total && !S.pLoop) { transport.stop(); A.atTime(t, () => { if (playing >= 0) stopProg(); }); return; }
+      const pos = sIn % total, seg = segAt[pos], c = S.prog[seg];
+      if (!c) return;
+      if (S.pMetro && isBeat) A.click(t, lvl);
+      if (seg !== lastSeg || pos === 0) {
+        lastSeg = seg;
+        A.atTime(t, () => {
+          if (!transport) return;
+          playing = seg; S.sel = seg; S.cur = { ...c };
+          renderChord(); renderSug(); renderProg(); renderFB();
+        });
+      }
+      if (isBeat) {
+        const k = Math.floor((pos - segStart[seg]) / (sigName === '6/8' ? 1 : 2));
+        const bar = Math.floor(pos / spb) + 1, totalBarsN = Math.ceil(total / spb);
+        A.atTime(t, () => lightBeat(seg, k, `такт ${bar} из ${totalBarsN} · доля ${beatOf(inBar) + 1}`));
+      }
+      if (!S.pSound) return;
+      const ch = G.isBass() ? (isBeat ? 'D' : '-') : sg.strums[Math.min(S.pStrum, sg.strums.length - 1)][0][inBar];
+      if (!ch || ch === '-') return;
+      if (G.isBass()) { A.pluck(G.bassRootMidi(c.root) + (inBar === spb - 2 && sigName !== '6/8' ? 12 : 0), 0, t, inBar === 0 ? 1 : 0.8, stepLen() * 1.7); return; }
       const v = G.voicings(c.root, c.q)[c.v];
-      if (v) A.strum(v.fr, p === 'D' ? 'down' : 'up', p === 'D' ? (k === 0 ? 1.05 : 0.85) : 0.55, t);
+      if (v) A.strum(v.fr, ch === 'D' ? 'down' : 'up', ch === 'D' ? (inBar === 0 ? 1.05 : 0.85) : 0.55, t);
     },
   });
   transport.start();
@@ -293,7 +365,27 @@ $('preset').addEventListener('change', e => {
   e.target.value = '';
   renderAll();
 });
-$('bpm').addEventListener('change', e => { S.bpm = G.clamp(+e.target.value || 96, 40, 220); e.target.value = S.bpm; G.save(); });
+$('bpm').addEventListener('change', e => { S.bpm = G.clamp(+e.target.value || 96, 40, 220); e.target.value = S.bpm; G.save(); renderProg(); });
+$('pSig').addEventListener('click', e => {
+  const v = e.target.dataset.v; if (!v || v === S.pSig) return;
+  if (playing >= 0) stopProg();
+  S.pSig = v; S.pStrum = 0;
+  if (v === '3/4') S.prog.forEach(c => { if (barsOf(c) === 0.5) c.bars = 1; });
+  G.save(); renderProg();
+});
+$('pStrum').addEventListener('change', e => { S.pStrum = +e.target.value; G.save(); });
+['pMetro', 'pCount', 'pSound', 'pLoop'].forEach(k => $(k).addEventListener('change', e => { S[k] = e.target.checked; G.save(); }));
+$('seqSel').addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t || S.sel < 0 || !S.prog[S.sel]) return;
+  if (playing >= 0) stopProg();
+  const i = S.sel;
+  if (t.dataset.d) { S.prog[i].bars = +t.dataset.d; S.cur.bars = S.prog[i].bars; }
+  else if (t.dataset.mv) {
+    const j = i + +t.dataset.mv; if (j < 0 || j >= S.prog.length) return;
+    [S.prog[i], S.prog[j]] = [S.prog[j], S.prog[i]]; S.sel = j;
+  } else if (t.dataset.dup) { S.prog.splice(i + 1, 0, { ...S.prog[i] }); S.sel = i + 1; }
+  G.save(); renderProg();
+});
 $('playProg').addEventListener('click', playProg);
 $('addCur').addEventListener('click', () => { S.prog.push({ ...S.cur }); S.sel = S.prog.length - 1; renderAll(); });
 $('clearProg').addEventListener('click', () => { if (playing >= 0) stopProg(); S.prog = []; S.sel = -1; renderAll(); });

@@ -33,6 +33,10 @@ document.addEventListener('click', e => {
   if (t && !t.closest('#fbInfo')) G.go(t.dataset.goto);
 });
 
+$('hSub').addEventListener('click', e => {
+  const b = e.target.closest('[data-to]'); if (!b) return;
+  const el = $(b.dataset.to); if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 80, behavior: 'smooth' });
+});
 $('inst').addEventListener('click', e => {
   const v = e.target.dataset.v; if (!v || v === S.inst) return;
   S.inst = v; G.audio.route(); renderHeader(); G.emit('instrument'); G.save();

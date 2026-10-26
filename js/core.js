@@ -315,8 +315,8 @@ G.PRESETS = {
   ],
 };
 G.keyRu = prep => (G.flats() ? G.RU_F : G.RU_S)[S.keyRoot] + (S.keyMode === 'major' ? (prep ? ' мажоре' : ' мажор') : (prep ? ' миноре' : ' минор'));
-G.degreeOf = c => {
-  const d = G.DEG[S.keyMode], iv = (c.root - S.keyRoot + 12) % 12, f = G.FAM[c.q];
+G.degreeOf = (c, kr = S.keyRoot, km = S.keyMode) => {
+  const d = G.DEG[km], iv = (c.root - kr + 12) % 12, f = G.FAM[c.q];
   const cand = Object.entries(d).filter(([, v]) => v[0] === iv);
   let hit = cand.find(([, v]) => v[1] === c.q) || cand.find(([, v]) => G.FAM[v[1]] === f);
   if (!hit && f === '7') hit = cand.find(([, v]) => G.FAM[v[1]] === 'M');
@@ -325,17 +325,17 @@ G.degreeOf = c => {
   return hit ? hit[0] : null;
 };
 G.powerize = q => (S.power && (q === 'maj' || q === 'm')) ? '5' : q;
-G.suggestions = c => {
-  const deg = G.degreeOf(c), out = [], seen = new Set();
+G.suggestions = (c, kr = S.keyRoot, km = S.keyMode) => {
+  const deg = G.degreeOf(c, kr, km), out = [], seen = new Set();
   const push = (root, q, rn, w, why) => {
     const k = root + q;
     if (seen.has(k) || (root === c.root && q === c.q)) return;
     seen.add(k); out.push({ root, q, rn, w, why });
   };
   if (deg) {
-    (G.TRANS[S.keyMode][deg] || []).forEach(([id, w, why]) => {
-      const [iv, q] = G.DEG[S.keyMode][id];
-      push((S.keyRoot + iv) % 12, G.powerize(q), id, w, why);
+    (G.TRANS[km][deg] || []).forEach(([id, w, why]) => {
+      const [iv, q] = G.DEG[km][id];
+      push((kr + iv) % 12, G.powerize(q), id, w, why);
     });
   } else {
     const r = c.root, f = G.FAM[c.q], self = G.chordName(c);
@@ -343,8 +343,8 @@ G.suggestions = c => {
       push((r + 5) % 12, 'maj', 'разрешение', 3, 'Доминантсептаккорд разрешается на кварту вверх.');
       push((r + 5) % 12, 'm', 'разрешение', 2, 'То же разрешение, но в минор.');
     }
-    const tq = S.keyMode === 'major' ? 'maj' : 'm';
-    push(S.keyRoot, G.powerize(tq), S.keyMode === 'major' ? 'I' : 'i', 3, 'Вернуться в тональность: тоника снимает напряжение.');
+    const tq = km === 'major' ? 'maj' : 'm';
+    push(kr, G.powerize(tq), km === 'major' ? 'I' : 'i', 3, 'Вернуться в тональность: тоника снимает напряжение.');
     push((r + 5) % 12, G.powerize('maj'), 'IV от ' + self, 2, 'Субдоминанта, если считать текущий аккорд тоникой.');
     push((r + 7) % 12, G.powerize('maj'), 'V от ' + self, 2, 'Доминанта от текущего аккорда.');
     if (f === 'm' || f === '5') {

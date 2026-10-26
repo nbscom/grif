@@ -83,6 +83,9 @@
       </div>
       <label class="check"><input type="checkbox" id="power"> Пауэр-аккорды в подсказках</label>
     </div>
+    <div class="subnav" id="hSub">
+      <button data-to="h-chord">Аккорд и что дальше</button><button data-to="h-prog">Последовательность</button><button data-to="h-lab">Изучение аккордов</button><button data-to="h-fb">Гриф</button>
+    </div>
   </div>
   <main class="grid">
     <section class="card" aria-labelledby="h-chord">
@@ -100,17 +103,31 @@
 
     <section class="card wide" aria-labelledby="h-prog">
       <div class="head">
-        <h2 id="h-prog">Прогрессия</h2>
+        <h2 id="h-prog">Последовательность аккордов</h2>
         <div class="tools">
           <select id="preset" aria-label="Готовые прогрессии"></select>
-          <label class="bpm" for="bpm">темп <input id="bpm" type="number" min="40" max="220" step="5"> BPM</label>
-          <button class="btn primary" id="playProg">▶ Играть</button>
           <button class="btn" id="addCur">+ Добавить текущий</button>
           <button class="btn" id="clearProg">Очистить</button>
         </div>
       </div>
+      <div class="seq-ctl">
+        <div class="ctl"><span class="lbl">Размер</span><div class="seg" id="pSig"></div></div>
+        <label class="bpm" for="bpm">темп <input id="bpm" type="number" min="40" max="220" step="1"> BPM</label>
+        <div class="ctl"><span class="lbl">Бой</span><select id="pStrum" aria-label="Ритмический рисунок"></select></div>
+        <label class="check"><input type="checkbox" id="pMetro"> Метроном</label>
+        <label class="check"><input type="checkbox" id="pCount"> Отсчёт такта</label>
+        <label class="check"><input type="checkbox" id="pSound"> Звук аккордов</label>
+        <label class="check"><input type="checkbox" id="pLoop"> По кругу</label>
+        <button class="btn primary big" id="playProg">▶ Играть</button>
+      </div>
       <div class="prog-list" id="progList"></div>
+      <div class="seq-foot">
+        <div class="seq-sel" id="seqSel"></div>
+        <div class="seq-status" id="seqStatus"></div>
+      </div>
     </section>
+
+    <section class="card wide" aria-labelledby="h-lab" id="chordLab"></section>
 
     <section class="card wide" aria-labelledby="h-fb">
       <div class="head">
@@ -143,6 +160,7 @@
 <script src="js/library.js"></script>
 <script src="js/input.js"></script>
 <script src="js/harmony.js"></script>
+<script src="js/chordlab.js"></script>
 <script src="js/tuner.js"></script>
 <script src="js/metronome.js"></script>
 <script src="js/exercises.js"></script>
