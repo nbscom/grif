@@ -225,7 +225,7 @@ function answer(pc, s, f, viaMic) {
   renderFB();
 }
 G.on('note', n => {
-  if (!quiz || S.quizSrc !== 'mic' || G.S.tab !== 'harmony' || !n.onset) return;
+  if (!quiz || S.quizSrc !== 'mic' || G.S.tab !== 'harmony' || !n.onset || n.midi === null) return;
   if (quiz.msgOk && performance.now() - quiz.t0 < 300) return;
   answer(Math.round(n.midi) % 12, undefined, undefined, true);
 });
