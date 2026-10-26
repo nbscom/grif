@@ -77,7 +77,7 @@ async function ensureApi() {
   api = new at.AlphaTabApi($('atMain'), {
     core: { fontDirectory: 'vendor/font/', scriptFile: new URL('vendor/alphaTab.min.js', location.href).href, engine: 'svg' },
     display: { scale: 0.95, layoutMode: 'Page' },
-    player: { playerMode: 'EnabledSynthesizer', soundFont: 'vendor/soundfont/sonivox.sf2', scrollElement: $('atWrap'), enableCursor: true },
+    player: { playerMode: 'EnabledSynthesizer', soundFont: window.GRIF_SOUNDFONT || 'vendor/soundfont/sonivox.sf2', scrollElement: $('atWrap'), enableCursor: true },
   });
   api.scoreLoaded.on(sc => { score = sc; onScore(); });
   api.playerReady.on(() => { $('atPlay').disabled = false; $('atStop').disabled = false; status(''); });
